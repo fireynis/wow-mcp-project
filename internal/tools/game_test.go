@@ -266,6 +266,14 @@ func TestToolRequests(t *testing.T) {
 		{"search_articles", map[string]any{"query": "raid"}, "/articles", "limit=25&q=raid"},
 		{"search_articles", nil, "/articles", "limit=25"},
 		{"get_article", map[string]any{"slug": "hello world"}, "/articles/hello%20world", ""},
+		{"get_bis", map[string]any{"spec": "druid-balance", "level": 34, "mode": "pvp", "side": "a", "easy": true}, "/bis/druid-balance", "easy=1&level=34&mode=pvp&side=a"},
+		{"get_bis", map[string]any{"spec": "druid-balance"}, "/bis/druid-balance", ""},
+		{"search_items", map[string]any{"query": "x", "minLevel": 10, "maxLevel": 20, "quality": 0, "offset": 25}, "/items", "limit=25&maxLevel=20&minLevel=10&offset=25&q=x&quality=0"},
+		{"search_quests", map[string]any{"query": "x", "minLevel": 5, "maxLevel": 12, "side": "horde", "offset": 50}, "/quests", "limit=25&maxLevel=12&minLevel=5&offset=50&q=x&side=horde"},
+		{"list_dungeons", map[string]any{"offset": 25}, "/dungeons", "limit=25&offset=25"},
+		{"list_zones", map[string]any{"offset": 25}, "/zones", "limit=25&offset=25"},
+		{"get_profession", map[string]any{"slug": "mining", "offset": 25}, "/professions/mining", "limit=25&offset=25"},
+		{"search_articles", map[string]any{"offset": 25}, "/articles", "limit=25&offset=25"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.tool+tt.query, func(t *testing.T) {
@@ -289,5 +297,19 @@ func TestEmptyIDIsAnError(t *testing.T) {
 	res := callTool(t, g, "get_item", map[string]any{"id": ""})
 	if !res.IsError || len(g.calls) != 0 {
 		t.Errorf("result = %v calls = %v", res.IsError, g.calls)
+	}
+}
+
+func TestRecentChangesClassAndOffset(t *testing.T) {
+	g := &fakeGame{}
+	decode(t, callTool(t, g, "get_recent_changes", map[string]any{"class": "Druid", "offset": 25}))
+	if len(g.calls) != 2 {
+		t.Fatalf("calls = %+v", g.calls)
+	}
+	if g.calls[0].path != "/buffs-nerfs" || g.calls[0].query.Encode() != "class=druid&limit=25&offset=25" {
+		t.Errorf("buffs-nerfs call = %+v", g.calls[0])
+	}
+	if g.calls[1].path != "/changes-seen" || g.calls[1].query.Encode() != "limit=25&offset=25" {
+		t.Errorf("changes-seen call = %+v", g.calls[1])
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -124,6 +125,20 @@ func paged(q url.Values) url.Values {
 	return q
 }
 
+// pagedAt is paged with the optional offset into the full list.
+func pagedAt(offset int) url.Values {
+	q := paged(url.Values{})
+	setPositive(q, "offset", offset)
+	return q
+}
+
+// setPositive sets k when v is above zero (zero means "not given").
+func setPositive(q url.Values, k string, v int) {
+	if v > 0 {
+		q.Set(k, strconv.Itoa(v))
+	}
+}
+
 func setIf(q url.Values, k, v string) {
 	if v = strings.TrimSpace(v); v != "" {
 		q.Set(k, v)
@@ -140,29 +155,51 @@ func byID(prefix, what, v string) (gameFetch, error) {
 }
 
 type (
+	// pageIn is embedded in every tool that lists 25 entries at a time.
+	pageIn struct {
+		Offset int `json:"offset,omitempty" jsonschema:"entries to skip, for the next page: 25, then 50, and so on"`
+	}
 	searchItemsIn struct {
-		Query string `json:"query" jsonschema:"part of the item name"`
-		Slot  string `json:"slot,omitempty" jsonschema:"inventory slot type ID (1 head, 5 chest, ...)"`
-		Class string `json:"class,omitempty" jsonschema:"item class ID (2 weapons, 4 armour, ...)"`
+		pageIn
+		Query    string `json:"query" jsonschema:"part of the item name"`
+		Slot     string `json:"slot,omitempty" jsonschema:"inventory slot type ID (1 head, 5 chest, ...)"`
+		Class    string `json:"class,omitempty" jsonschema:"item class ID (2 weapons, 4 armour, ...)"`
+		Quality  *int   `json:"quality,omitempty" jsonschema:"0 Poor to 5 Legendary"`
+		MinLevel int    `json:"minLevel,omitempty" jsonschema:"lowest required level"`
+		MaxLevel int    `json:"maxLevel,omitempty" jsonschema:"highest required level"`
 	}
 	idIn struct {
 		ID string `json:"id" jsonschema:"the numeric ID"`
 	}
-	noIn  struct{}
-	bisIn struct {
-		Spec string `json:"spec,omitempty" jsonschema:"spec ID such as hunter-beast-mastery; leave empty to list valid IDs"`
+	listIn struct{ pageIn }
+	bisIn  struct {
+		Spec  string `json:"spec,omitempty" jsonschema:"spec ID such as hunter-beast-mastery; leave empty to list valid IDs"`
+		Level int    `json:"level,omitempty" jsonschema:"character level 1 to 60; pass the character's level, otherwise the level cap is assumed"`
+		Mode  string `json:"mode,omitempty" jsonschema:"pve (default) or pvp"`
+		Side  string `json:"side,omitempty" jsonschema:"a for Alliance items only, h for Horde"`
+		Easy  bool   `json:"easy,omitempty" jsonschema:"true hides hard to get picks: raids, high PvP ranks, rare drops"`
 	}
 	searchQuestsIn struct {
-		Query string `json:"query" jsonschema:"part of the quest name"`
-		Zone  string `json:"zone,omitempty" jsonschema:"part of the zone name"`
+		pageIn
+		Query    string `json:"query" jsonschema:"part of the quest name"`
+		Zone     string `json:"zone,omitempty" jsonschema:"part of the zone name"`
+		MinLevel int    `json:"minLevel,omitempty" jsonschema:"lowest quest level"`
+		MaxLevel int    `json:"maxLevel,omitempty" jsonschema:"highest quest level"`
+		Side     string `json:"side,omitempty" jsonschema:"alliance or horde"`
 	}
 	classIn struct {
 		Name string `json:"name" jsonschema:"class name, for example druid"`
 	}
 	professionIn struct {
+		pageIn
 		Slug string `json:"slug" jsonschema:"profession slug, for example alchemy or first-aid"`
 	}
+	changesIn struct {
+		pageIn
+		Class string `json:"class,omitempty" jsonschema:"class name or ID, for example druid; narrows the buffs and nerfs"`
+	}
 	articlesIn struct {
+		pageIn
 		Query string `json:"query,omitempty" jsonschema:"text to look for"`
 	}
 	articleIn struct {
@@ -170,11 +207,20 @@ type (
 	}
 )
 
+type noIn struct{}
+
+const pageNote = " Lists come 25 entries at a time; the total is in meta, and offset 25, 50, ... fetches the next pages; a truncated flag means the answer was cut."
+
 // registerGame adds the ForeverDB tools.
 func registerGame(srv *mcp.Server, g GameSource) {
-	addGameTool(srv, g, "search_items", "Search WoW Forever items by name, optionally by slot or item class; returns at most 25 matches.",
+	addGameTool(srv, g, "search_items", "Search WoW Forever items by name, optionally by slot, item class, quality or required level (pass the character's level as maxLevel to find gear they can use)."+pageNote,
 		func(in searchItemsIn) (gameFetch, error) {
-			q := paged(url.Values{})
+			q := pagedAt(in.Offset)
+			setPositive(q, "minLevel", in.MinLevel)
+			setPositive(q, "maxLevel", in.MaxLevel)
+			if in.Quality != nil {
+				q.Set("quality", strconv.Itoa(*in.Quality))
+			}
 			setIf(q, "q", in.Query)
 			setIf(q, "slot", in.Slot)
 			setIf(q, "class", in.Class)
@@ -182,61 +228,74 @@ func registerGame(srv *mcp.Server, g GameSource) {
 		})
 	addGameTool(srv, g, "get_item", "Get one WoW Forever item by ID: stats, effects, binding, price and live-client changes.",
 		func(in idIn) (gameFetch, error) { return byID("/items", "id", in.ID) })
-	addGameTool(srv, g, "list_dungeons", "List WoW Forever dungeons and raids with level ranges, lowest level first (first 25).",
-		func(noIn) (gameFetch, error) { return single("/dungeons", paged(url.Values{})) })
+	addGameTool(srv, g, "list_dungeons", "List WoW Forever dungeons and raids with level ranges, lowest level first."+pageNote,
+		func(in listIn) (gameFetch, error) { return single("/dungeons", pagedAt(in.Offset)) })
 	addGameTool(srv, g, "get_dungeon", "Get one dungeon by ID (from list_dungeons): bosses and notable loot.",
 		func(in idIn) (gameFetch, error) { return byID("/dungeons", "id", in.ID) })
-	addGameTool(srv, g, "get_bis", "Get best-in-slot gear and enchants for a class spec. Call it without a spec first to see the valid spec IDs, then again with one.",
+	addGameTool(srv, g, "get_bis", "Get best-in-slot gear and enchants for a class spec. Call it without a spec first to see the valid spec IDs, then again with one. Always pass the character's level; without it the level cap is assumed.",
 		func(in bisIn) (gameFetch, error) {
 			if strings.TrimSpace(in.Spec) == "" {
 				return single("/bis", nil)
 			}
-			return byID("/bis", "spec", in.Spec)
+			spec := strings.TrimSpace(in.Spec)
+			q := url.Values{}
+			setPositive(q, "level", in.Level)
+			setIf(q, "mode", in.Mode)
+			setIf(q, "side", in.Side)
+			if in.Easy {
+				q.Set("easy", "1")
+			}
+			return single("/bis/"+url.PathEscape(spec), q)
 		})
-	addGameTool(srv, g, "search_quests", "Search WoW Forever quests by name, optionally within a zone; returns at most 25.",
+	addGameTool(srv, g, "search_quests", "Search WoW Forever quests by name, optionally within a zone, a quest level range (pass the character's level) or a side."+pageNote,
 		func(in searchQuestsIn) (gameFetch, error) {
-			q := paged(url.Values{})
+			q := pagedAt(in.Offset)
+			setPositive(q, "minLevel", in.MinLevel)
+			setPositive(q, "maxLevel", in.MaxLevel)
+			setIf(q, "side", in.Side)
 			setIf(q, "q", in.Query)
 			setIf(q, "zone", in.Zone)
 			return single("/quests", q)
 		})
 	addGameTool(srv, g, "get_quest", "Get one quest by ID: guide, chain, who starts and ends it, and where.",
 		func(in idIn) (gameFetch, error) { return byID("/quests", "id", in.ID) })
-	addGameTool(srv, g, "list_zones", "List world map zones and continents with their map IDs (first 25).",
-		func(noIn) (gameFetch, error) { return single("/zones", paged(url.Values{})) })
+	addGameTool(srv, g, "list_zones", "List world map zones and continents with their map IDs."+pageNote,
+		func(in listIn) (gameFetch, error) { return single("/zones", pagedAt(in.Offset)) })
 	addGameTool(srv, g, "get_vendor", "Get one vendor by ID: where they stand and everything they sell, with prices.",
 		func(in idIn) (gameFetch, error) { return byID("/vendors", "id", in.ID) })
 	addGameTool(srv, g, "get_itemset", "Get one item set by ID: its pieces and set bonuses.",
 		func(in idIn) (gameFetch, error) { return byID("/itemsets", "id", in.ID) })
 	addGameTool(srv, g, "get_class", "Get one class's abilities and full talent trees by class name.",
 		func(in classIn) (gameFetch, error) { return byID("/classes", "name", strings.ToLower(in.Name)) })
-	addGameTool(srv, g, "get_profession", "Get one profession's ranks, trainers and recipes by slug (first 25 recipes).",
+	addGameTool(srv, g, "get_profession", "Get one profession's ranks, trainers and recipes by slug by skill."+pageNote,
 		func(in professionIn) (gameFetch, error) {
 			slug := strings.TrimSpace(in.Slug)
 			if slug == "" {
 				return nil, errors.New("slug is required")
 			}
-			return single("/professions/"+url.PathEscape(slug), paged(url.Values{}))
+			return single("/professions/"+url.PathEscape(slug), pagedAt(in.Offset))
 		})
 	addGameTool(srv, g, "get_endgame", "Get how much of WoW Forever's level 40-60 game, raids included, players have confirmed.",
 		func(noIn) (gameFetch, error) { return single("/endgame", nil) })
-	addGameTool(srv, g, "get_recent_changes", "Get recent class buffs and nerfs per build together with what players saw differ from the game files.",
-		func(noIn) (gameFetch, error) {
+	addGameTool(srv, g, "get_recent_changes", "Get recent class buffs and nerfs per build together with what players saw differ from the game files. Pass class to narrow the buffs and nerfs to one class."+pageNote,
+		func(in changesIn) (gameFetch, error) {
 			return func(ctx context.Context, g GameSource) (any, bool, error) {
-				bn, t1, err := get(ctx, g, "/buffs-nerfs", paged(url.Values{}))
+				bq := pagedAt(in.Offset)
+				setIf(bq, "class", strings.ToLower(in.Class))
+				bn, t1, err := get(ctx, g, "/buffs-nerfs", bq)
 				if err != nil {
 					return nil, false, err
 				}
-				cs, t2, err := get(ctx, g, "/changes-seen", paged(url.Values{}))
+				cs, t2, err := get(ctx, g, "/changes-seen", pagedAt(in.Offset))
 				if err != nil {
 					return nil, false, err
 				}
 				return map[string]any{"buffs_nerfs": bn, "changes_seen": cs}, t1 || t2, nil
 			}, nil
 		})
-	addGameTool(srv, g, "search_articles", "List ForeverDB news and articles, newest first, optionally filtered by text (first 25).",
+	addGameTool(srv, g, "search_articles", "List ForeverDB news and articles, newest first, optionally filtered by text."+pageNote,
 		func(in articlesIn) (gameFetch, error) {
-			q := paged(url.Values{})
+			q := pagedAt(in.Offset)
 			setIf(q, "q", in.Query)
 			return single("/articles", q)
 		})
