@@ -38,38 +38,39 @@ func get(ctx context.Context, g GameSource, path string, q url.Values) (any, boo
 	if err != nil {
 		return nil, false, gameError(path, err)
 	}
-	data, truncated := capList(body)
+	data, truncated, err := capList(body)
+	if err != nil {
+		return nil, false, gameErr("could not trim the ForeverDB answer: " + err.Error())
+	}
 	return data, truncated, nil
 }
 
 // capList cuts the top-level array, or the array under "data" of the
 // {"data":..., "meta":...} envelope, to maxListEntries. Everything else is
 // passed through untouched.
-func capList(body json.RawMessage) (json.RawMessage, bool) {
+func capList(body json.RawMessage) (json.RawMessage, bool, error) {
 	var arr []json.RawMessage
 	if json.Unmarshal(body, &arr) == nil {
 		if len(arr) <= maxListEntries {
-			return body, false
+			return body, false, nil
 		}
-		return mustMarshal(arr[:maxListEntries]), true
+		cut, err := json.Marshal(arr[:maxListEntries])
+		return cut, true, err
 	}
 	var env map[string]json.RawMessage
 	if json.Unmarshal(body, &env) != nil {
-		return body, false
+		return body, false, nil
 	}
 	if json.Unmarshal(env["data"], &arr) != nil || len(arr) <= maxListEntries {
-		return body, false
+		return body, false, nil
 	}
-	env["data"] = mustMarshal(arr[:maxListEntries])
-	return mustMarshal(env), true
-}
-
-func mustMarshal(v any) json.RawMessage {
-	b, err := json.Marshal(v)
+	cut, err := json.Marshal(arr[:maxListEntries])
 	if err != nil {
-		panic(err) // v is always a slice or map of already-valid JSON
+		return nil, false, err
 	}
-	return b
+	env["data"] = cut
+	out, err := json.Marshal(env)
+	return out, true, err
 }
 
 // gameError is the text the model sees for a failed ForeverDB call. Errors
@@ -86,6 +87,8 @@ func gameError(path string, err error) error {
 		return gameErr("ForeverDB quota used up for today")
 	case errors.Is(err, keychain.ErrNotFound):
 		return gameErr("No ForeverDB API key is stored; run `wow-mcp keys set foreverdb` in a terminal, then try again")
+	case errors.As(err, &he) && (he.Status == http.StatusUnauthorized || he.Status == http.StatusForbidden):
+		return gameErr("ForeverDB rejected the API key (HTTP " + strconv.Itoa(he.Status) + "); check it with `wow-mcp doctor` or store a new one with `wow-mcp keys set foreverdb`.")
 	case errors.As(err, &he) && he.Status == http.StatusNotFound:
 		return gameErr("ForeverDB has nothing at " + path)
 	case errors.As(err, &rl):
@@ -145,11 +148,23 @@ func setIf(q url.Values, k, v string) {
 	}
 }
 
+// checkSegment rejects a value that is empty or is a dot segment: url.PathEscape
+// leaves "." and ".." as they are, so they would climb out of the endpoint.
+func checkSegment(what, v string) error {
+	switch v {
+	case "":
+		return errors.New(what + " is required")
+	case ".", "..":
+		return errors.New(what + " " + strconv.Quote(v) + " is not a valid identifier")
+	}
+	return nil
+}
+
 // byID plans GET <prefix>/<id> for a required identifier.
 func byID(prefix, what, v string) (gameFetch, error) {
 	v = strings.TrimSpace(v)
-	if v == "" {
-		return nil, errors.New(what + " is required")
+	if err := checkSegment(what, v); err != nil {
+		return nil, err
 	}
 	return single(prefix+"/"+url.PathEscape(v), nil)
 }
@@ -238,6 +253,9 @@ func registerGame(srv *mcp.Server, g GameSource) {
 				return single("/bis", nil)
 			}
 			spec := strings.TrimSpace(in.Spec)
+			if err := checkSegment("spec", spec); err != nil {
+				return nil, err
+			}
 			q := url.Values{}
 			setPositive(q, "level", in.Level)
 			setIf(q, "mode", in.Mode)
@@ -267,11 +285,11 @@ func registerGame(srv *mcp.Server, g GameSource) {
 		func(in idIn) (gameFetch, error) { return byID("/itemsets", "id", in.ID) })
 	addGameTool(srv, g, "get_class", "Get one class's abilities and full talent trees by class name.",
 		func(in classIn) (gameFetch, error) { return byID("/classes", "name", strings.ToLower(in.Name)) })
-	addGameTool(srv, g, "get_profession", "Get one profession's ranks, trainers and recipes by slug by skill."+pageNote,
+	addGameTool(srv, g, "get_profession", "Get one profession's ranks, trainers and recipes by slug."+pageNote,
 		func(in professionIn) (gameFetch, error) {
 			slug := strings.TrimSpace(in.Slug)
-			if slug == "" {
-				return nil, errors.New("slug is required")
+			if err := checkSegment("slug", slug); err != nil {
+				return nil, err
 			}
 			return single("/professions/"+url.PathEscape(slug), pagedAt(in.Offset))
 		})

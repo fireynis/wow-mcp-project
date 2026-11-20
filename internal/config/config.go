@@ -74,6 +74,16 @@ func Load(path string) (Config, error) {
 		}
 	}
 	cacheDir := f.CacheDir
+	if strings.HasPrefix(cacheDir, "~/") || cacheDir == "~" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return Config{}, fmt.Errorf("config %s: cache_dir %q needs a home directory: %w", path, cacheDir, err)
+		}
+		cacheDir = filepath.Join(home, strings.TrimPrefix(strings.TrimPrefix(cacheDir, "~"), "/"))
+	}
+	if cacheDir != "" && !filepath.IsAbs(cacheDir) {
+		return Config{}, fmt.Errorf("config %s: cache_dir must be an absolute path or start with ~/ (got %q)", path, f.CacheDir)
+	}
 	if cacheDir == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {

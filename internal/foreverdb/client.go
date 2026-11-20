@@ -161,7 +161,7 @@ func (c *Client) fetch(ctx context.Context, path string, query url.Values) ([]by
 func (c *Client) do(ctx context.Context, u, key string) ([]byte, time.Duration, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
-		return nil, 0, fmt.Errorf("ForeverDB: %s", scrub(err.Error(), key))
+		return nil, 0, scrubErr("ForeverDB", err, key)
 	}
 	req.Header.Set("X-API-Key", key)
 	req.Header.Set("User-Agent", userAgent)
@@ -178,7 +178,7 @@ func (c *Client) do(ctx context.Context, u, key string) ([]byte, time.Duration, 
 	noRedirect.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	resp, err := noRedirect.Do(req)
 	if err != nil {
-		return nil, 0, fmt.Errorf("ForeverDB: %s", scrub(err.Error(), key))
+		return nil, 0, scrubErr("ForeverDB", err, key)
 	}
 	defer resp.Body.Close()
 
@@ -204,7 +204,7 @@ func (c *Client) do(ctx context.Context, u, key string) ([]byte, time.Duration, 
 	}
 	b, err := io.ReadAll(io.LimitReader(resp.Body, maxBody+1))
 	if err != nil {
-		return nil, 0, fmt.Errorf("ForeverDB: reading the answer: %s", scrub(err.Error(), key))
+		return nil, 0, scrubErr("ForeverDB: reading the answer", err, key)
 	}
 	if len(b) > maxBody {
 		return nil, 0, fmt.Errorf("ForeverDB: answer too large (over %d bytes); narrow the query", maxBody)
@@ -217,4 +217,18 @@ func scrub(msg, key string) string {
 		return msg
 	}
 	return strings.ReplaceAll(msg, key, "[key]")
+}
+
+// scrubbed is an error whose text has had the key removed, while Unwrap still
+// reaches the original, so errors.Is(err, context.Canceled) keeps working.
+type scrubbed struct {
+	msg string
+	err error
+}
+
+func (e *scrubbed) Error() string { return e.msg }
+func (e *scrubbed) Unwrap() error { return e.err }
+
+func scrubErr(prefix string, err error, key string) error {
+	return &scrubbed{msg: prefix + ": " + scrub(err.Error(), key), err: err}
 }

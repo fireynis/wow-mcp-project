@@ -146,3 +146,29 @@ func TestProbeRejectsArguments(t *testing.T) {
 		t.Fatalf("exit %d", code)
 	}
 }
+
+func TestProbeExistingOutDirKeepsModeAndUsesSubdir(t *testing.T) {
+	useProbeServer(t, true)
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var out, errb bytes.Buffer
+	if code := runIO([]string{"probe", "-out", dir}, strings.NewReader(""), &out, &errb); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	if st, _ := os.Stat(dir); st.Mode().Perm() != 0o755 {
+		t.Errorf("existing dir mode changed to %v", st.Mode().Perm())
+	}
+	subs, _ := os.ReadDir(dir)
+	if len(subs) != 1 || !subs[0].IsDir() || !strings.HasPrefix(subs[0].Name(), "probe-") {
+		t.Fatalf("want one probe-* subdir, got %v", subs)
+	}
+	sub := filepath.Join(dir, subs[0].Name())
+	if st, _ := os.Stat(sub); st.Mode().Perm() != 0o700 {
+		t.Errorf("subdir mode %v", st.Mode().Perm())
+	}
+	if !strings.Contains(out.String(), sub) {
+		t.Errorf("output does not print %s:\n%s", sub, out.String())
+	}
+}

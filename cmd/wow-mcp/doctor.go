@@ -66,6 +66,7 @@ func cmdDoctor(e *env, args []string) error {
 
 	kc := secrets()
 	have := map[string]bool{}
+	loginKeysMissing := false
 	for _, account := range keychain.Accounts {
 		name := "keychain " + account
 		has, err := kc.Has(ctx, account)
@@ -76,7 +77,10 @@ func cmdDoctor(e *env, args []string) error {
 			have[account] = true
 			r.ok(name, "present")
 		case account == keychain.BlizzardUserToken || account == keychain.BlizzardUserExpiry:
-			r.fail(name, "missing.", "run wow-mcp login")
+			// Only the character tools need the login, and they are not
+			// built yet, so this is a warning; it is the one report of it.
+			loginKeysMissing = true
+			r.warn(name, "missing; run wow-mcp login (only the character tools need it).")
 		default:
 			r.fail(name, "missing.", "run wow-mcp keys set "+account)
 		}
@@ -91,7 +95,9 @@ func cmdDoctor(e *env, args []string) error {
 		r.ok("Blizzard app token", "obtained")
 	}
 
-	doctorUserToken(ctx, r, auth)
+	if !loginKeysMissing {
+		doctorUserToken(ctx, r, auth)
+	}
 	doctorForeverDB(ctx, r, kc, have[keychain.ForeverDB])
 
 	switch {
@@ -115,6 +121,9 @@ func cmdDoctor(e *env, args []string) error {
 		}
 	}
 
+	r.ok("serve", "game tools: registered")
+	r.skip("serve", "character tools: not built yet (waiting on probe findings)")
+
 	if r.failed {
 		return errors.New("some checks failed")
 	}
@@ -125,13 +134,17 @@ func cmdDoctor(e *env, args []string) error {
 func doctorUserToken(ctx context.Context, r *report, auth *blizzard.Auth) {
 	const name = "Battle.net login"
 	if _, err := auth.UserToken(ctx); err != nil {
+		if errors.Is(err, blizzard.ErrLoginExpired) {
+			r.warn(name, err.Error())
+			return
+		}
 		r.fail(name, err.Error(), "")
 		return
 	}
 	exp, err := auth.Keys.Get(ctx, keychain.BlizzardUserExpiry)
 	secs, perr := strconv.ParseInt(strings.TrimSpace(exp), 10, 64)
 	if err != nil || perr != nil {
-		r.fail(name, "the stored expiry is unreadable.", "run wow-mcp login")
+		r.warn(name, "the stored expiry is unreadable; run wow-mcp login.")
 		return
 	}
 	expires := time.Unix(secs, 0)

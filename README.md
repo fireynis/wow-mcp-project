@@ -48,9 +48,12 @@ go build -o build/wow-mcp ./cmd/wow-mcp
    login expires; when it does, character requests answer
    `Your Battle.net login has expired; run wow-mcp login.` and you run it again.
 6. **Check everything**: `build/wow-mcp doctor` prints one line per check (`ok`, `warn`, `skip` or
-   `FAIL` with the fix) and exits 1 if anything failed. It checks the config, each Keychain account,
-   the Blizzard app token, the login and its expiry (warning under 2 hours), ForeverDB `/meta` with
-   your key, and that your main character can be found.
+   `FAIL` with the fix) and exits 1 only if a check FAILs. It checks the config, each Keychain
+   account, the Blizzard app token, ForeverDB `/meta` with your key, and that your main character
+   can be found. The Battle.net login (missing, expired, or expiring within 2 hours) is only a
+   `warn`, reported once, because just the character tools need it and they are not built yet. It
+   ends with which tool groups `serve` registers today (game tools: registered; character tools:
+   not built yet).
 7. **Add it to Claude Code**:
 
    ```sh
@@ -67,7 +70,7 @@ error naming it.
 
 ```toml
 region = "us"                      # us, eu or tw (required)
-cache_dir = "/Users/you/Library/Caches/wow-app"   # optional; this is the default
+cache_dir = "/Users/you/Library/Caches/wow-app"   # optional; absolute or ~/..., this is the default
 static_namespace = "static-forever-us"            # optional
 
 [main]                             # required

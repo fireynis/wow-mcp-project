@@ -83,11 +83,21 @@ func cmdProbe(e *env, args []string) error {
 		if dir, err = os.MkdirTemp("", "wow-mcp-probe-"); err != nil {
 			return err
 		}
-	} else if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
-	}
-	if err := os.Chmod(dir, 0o700); err != nil {
-		return err
+	} else if fi, statErr := os.Stat(dir); statErr == nil && fi.IsDir() {
+		// An existing directory is the user's: leave its mode alone and write
+		// into a fresh private subdirectory.
+		if dir, err = os.MkdirTemp(dir, "probe-"); err != nil {
+			return err
+		}
+	} else if statErr == nil {
+		return fmt.Errorf("-out %s is not a directory", dir)
+	} else {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return err
+		}
+		if err := os.Chmod(dir, 0o700); err != nil {
+			return err
+		}
 	}
 
 	staticNS := cfg.StaticNamespace

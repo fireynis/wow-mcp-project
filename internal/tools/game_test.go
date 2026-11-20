@@ -313,3 +313,48 @@ func TestRecentChangesClassAndOffset(t *testing.T) {
 		t.Errorf("changes-seen call = %+v", g.calls[1])
 	}
 }
+
+func TestAuthRejectionNamesDoctorAndKeysSet(t *testing.T) {
+	for _, status := range []int{401, 403} {
+		res := callTool(t, &fakeGame{err: &foreverdb.HTTPError{Status: status, Body: "<html>nope</html>"}}, "get_item", map[string]any{"id": "1"})
+		got := text(t, res)
+		want := fmt.Sprintf("ForeverDB rejected the API key (HTTP %d); check it with `wow-mcp doctor` or store a new one with `wow-mcp keys set foreverdb`.", status)
+		if !res.IsError || got != want {
+			t.Errorf("HTTP %d: result = %v %q", status, res.IsError, got)
+		}
+	}
+}
+
+func TestDotSegmentsRejectedBeforeAnyRequest(t *testing.T) {
+	cases := []struct {
+		tool string
+		args map[string]any
+	}{
+		{"get_item", map[string]any{"id": ".."}},
+		{"get_item", map[string]any{"id": "."}},
+		{"get_profession", map[string]any{"slug": ".."}},
+		{"get_article", map[string]any{"slug": ".."}},
+		{"get_class", map[string]any{"name": ".."}},
+		{"get_bis", map[string]any{"spec": ".."}},
+	}
+	for _, c := range cases {
+		g := &fakeGame{}
+		res := callTool(t, g, c.tool, c.args)
+		if !res.IsError || len(g.calls) != 0 {
+			t.Errorf("%s %v: error = %v calls = %v", c.tool, c.args, res.IsError, g.calls)
+		}
+	}
+}
+
+func TestProfessionDescriptionTypo(t *testing.T) {
+	cs := connect(t, New(Deps{Game: &fakeGame{}}))
+	res, err := cs.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tl := range res.Tools {
+		if tl.Name == "get_profession" && strings.Contains(tl.Description, "by slug by skill") {
+			t.Errorf("description has a typo: %q", tl.Description)
+		}
+	}
+}

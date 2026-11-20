@@ -43,6 +43,7 @@ type doctorOpts struct {
 	omit        string        // account left out of the Keychain
 	userExpires time.Duration // user token lifetime from now
 	charStatus  int           // answer for the character path
+	fdbKey      string        // ForeverDB key in the Keychain (default: the one the server accepts)
 }
 
 // useDoctor wires doctor to a fake Blizzard and ForeverDB server and a fake
@@ -79,6 +80,9 @@ func useDoctor(t *testing.T, o doctorOpts) {
 		keychain.ForeverDB:            "fdbkey12345",
 		keychain.BlizzardUserToken:    "user-token-BBB222",
 		keychain.BlizzardUserExpiry:   strconv.FormatInt(time.Now().Add(o.userExpires).Unix(), 10),
+	}
+	if o.fdbKey != "" {
+		keys[keychain.ForeverDB] = o.fdbKey
 	}
 	delete(keys, o.omit)
 	kc := keychain.Keychain{Runner: mapRunner(keys), Path: keychain.SecurityPath}
@@ -137,10 +141,56 @@ func TestDoctorWarnsWhenLoginExpiresSoon(t *testing.T) {
 	}
 }
 
-func TestDoctorFailsOnExpiredLogin(t *testing.T) {
+func TestDoctorExpiredLoginIsAWarning(t *testing.T) {
 	useDoctor(t, doctorOpts{userExpires: -time.Hour})
 	code, out := runDoctor(t)
-	if code != 1 || !strings.Contains(out, "Your Battle.net login has expired; run wow-mcp login.") {
+	if code != 0 || !strings.Contains(out, "warn  Battle.net login: Your Battle.net login has expired; run wow-mcp login.") {
+		t.Errorf("exit %d\n%s", code, out)
+	}
+	if strings.Contains(out, "FAIL") {
+		t.Errorf("expired login must not FAIL:\n%s", out)
+	}
+}
+
+func TestDoctorNoLoginWarnsOnceAndExitsZero(t *testing.T) {
+	for _, omit := range []string{keychain.BlizzardUserToken, keychain.BlizzardUserExpiry} {
+		useDoctor(t, doctorOpts{omit: omit})
+		code, out := runDoctor(t)
+		if code != 0 || strings.Contains(out, "FAIL") {
+			t.Errorf("omit %s: exit %d\n%s", omit, code, out)
+		}
+		warns := 0
+		for _, l := range strings.Split(out, "\n") {
+			if strings.HasPrefix(l, "warn") && strings.Contains(l, "wow-mcp login") {
+				warns++
+			}
+		}
+		if warns != 1 {
+			t.Errorf("omit %s: %d login warnings, want exactly 1\n%s", omit, warns, out)
+		}
+	}
+}
+
+func TestDoctorStatesWhichToolGroupsServeRegisters(t *testing.T) {
+	useDoctor(t, doctorOpts{})
+	_, out := runDoctor(t)
+	for _, want := range []string{"game tools: registered", "character tools: not built yet (waiting on probe findings)"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestDoctorRejectedForeverDBKeyFails(t *testing.T) {
+	useDoctor(t, doctorOpts{fdbKey: "wrong-key-999"})
+	code, out := runDoctor(t)
+	found := false
+	for _, l := range strings.Split(out, "\n") {
+		if strings.HasPrefix(l, "FAIL  ForeverDB") && strings.Contains(l, "wow-mcp keys set foreverdb") {
+			found = true
+		}
+	}
+	if code != 1 || !found || strings.Contains(out, "wrong-key-999") {
 		t.Errorf("exit %d\n%s", code, out)
 	}
 }

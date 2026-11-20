@@ -3,6 +3,7 @@ package foreverdb
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -311,5 +312,26 @@ func TestLiveMeta(t *testing.T) {
 	}
 	if len(got) == 0 {
 		t.Error("empty /meta")
+	}
+}
+
+type failingTransport struct{ err error }
+
+func (f failingTransport) RoundTrip(*http.Request) (*http.Response, error) { return nil, f.err }
+
+func TestTransportErrorKeepsCauseAndScrubsKey(t *testing.T) {
+	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
+		c := &Client{
+			BaseURL: "http://example.invalid",
+			Key:     func(context.Context) (string, error) { return "k123", nil },
+			HTTP:    &http.Client{Transport: failingTransport{err: fmt.Errorf("dial with k123: %w", cause)}},
+		}
+		_, err := c.Get(context.Background(), "/items/1", nil)
+		if !errors.Is(err, cause) {
+			t.Errorf("errors.Is(%v, %v) = false", err, cause)
+		}
+		if err == nil || strings.Contains(err.Error(), "k123") {
+			t.Errorf("error %v leaks the key", err)
+		}
 	}
 }

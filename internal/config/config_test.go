@@ -98,3 +98,30 @@ func TestDefaultPath(t *testing.T) {
 		t.Errorf("DefaultPath = %q, want %q", got, want)
 	}
 }
+
+func TestCacheDirTildeExpands(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	cfg, err := Load(writeConfig(t, "region = \"us\"\ncache_dir = \"~/x\"\n[main]\nrealm = \"a\"\nname = \"b\"\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(home, "x"); cfg.CacheDir != want {
+		t.Errorf("CacheDir = %q, want %q", cfg.CacheDir, want)
+	}
+}
+
+func TestCacheDirRelativeRejected(t *testing.T) {
+	_, err := Load(writeConfig(t, "region = \"us\"\ncache_dir = \"rel/x\"\n[main]\nrealm = \"a\"\nname = \"b\"\n"))
+	if err == nil || !strings.Contains(err.Error(), "cache_dir") {
+		t.Fatalf("err = %v, want one naming cache_dir", err)
+	}
+}
+
+func TestCacheDirDefaultIsAbsolute(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	cfg, err := Load(writeConfig(t, "region = \"us\"\n[main]\nrealm = \"a\"\nname = \"b\"\n"))
+	if err != nil || !filepath.IsAbs(cfg.CacheDir) {
+		t.Fatalf("cfg = %+v err = %v", cfg, err)
+	}
+}
