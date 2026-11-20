@@ -14,6 +14,8 @@ Commands:
   serve                run the MCP server on stdin/stdout (the default)
   login                sign in to Battle.net in the browser (needs the Blizzard
                        client id and secret stored first)
+  probe [-out dir]     ask Blizzard what the Forever profile API returns for your
+                       character; writes every answer (tokens scrubbed) to a directory
   keys set <account>   store a secret, read from standard input, in the login Keychain
                        (blizzard-client-id, blizzard-client-secret, foreverdb,
                        blizzard-user-token, blizzard-user-token-expiry)
@@ -40,6 +42,7 @@ func runIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		"serve": cmdServe,
 		"keys":  cmdKeys,
 		"login": cmdLogin,
+		"probe": cmdProbe,
 	}
 	cmd, ok := commands[args[0]]
 	if !ok {

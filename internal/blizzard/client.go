@@ -87,3 +87,42 @@ func (c *Client) Get(ctx context.Context, path, namespace string, user bool) (js
 	}
 	return b, nil
 }
+
+// Raw is Get for discovery: it returns the status and body of any answer,
+// 2xx or not (the body capped at 4 MiB), and an error only when no answer
+// arrived or no token was available (ErrLoginExpired for a missing user
+// token). The body is not scrubbed; the caller knows the tokens.
+func (c *Client) Raw(ctx context.Context, path, namespace string, user bool) (int, []byte, error) {
+	var token string
+	var err error
+	if user {
+		token, err = c.Auth.UserToken(ctx)
+	} else {
+		token, err = c.Auth.AppToken(ctx)
+	}
+	if err != nil {
+		return 0, nil, err
+	}
+	q := url.Values{"namespace": {namespace}, "locale": {"en_US"}}
+	u := strings.TrimRight(c.BaseURL, "/") + path + "?" + q.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return 0, nil, scrubErr("Blizzard", err, token)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "application/json")
+	resp, err := httpClient(c.HTTP).Do(req)
+	if err != nil {
+		return 0, nil, scrubErr("Blizzard", err, token)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized && !user {
+		c.Auth.forgetAppToken()
+	}
+	b, err := io.ReadAll(io.LimitReader(resp.Body, maxBody))
+	if err != nil {
+		return 0, nil, scrubErr("Blizzard: reading the answer", err, token)
+	}
+	return resp.StatusCode, b, nil
+}

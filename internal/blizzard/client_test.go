@@ -127,3 +127,16 @@ func TestGetTransportErrorKeepsContextAndScrubs(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestRawReturnsFailureBodies(t *testing.T) {
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"detail":"nope"}`))
+	}))
+	defer api.Close()
+	c := clientFor(t, api, credKeys())
+	status, body, err := c.Raw(context.Background(), "/x", "ns", false)
+	if err != nil || status != 403 || string(body) != `{"detail":"nope"}` {
+		t.Fatalf("status=%d body=%q err=%v", status, body, err)
+	}
+}
