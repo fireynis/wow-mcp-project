@@ -6,11 +6,39 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"wowapp/internal/config"
+	"wowapp/internal/foreverdb"
+	"wowapp/internal/keychain"
 	"wowapp/internal/tools"
 )
+
+const foreverDBBaseURL = "https://foreverdb.net/api/v1"
+
+// configPath and secrets are what serve reads its settings and keys from;
+// tests replace them.
+var (
+	configPath = config.DefaultPath
+	secrets    = func() keychain.Keychain {
+		return keychain.Keychain{Runner: keychain.ExecRunner{}, Path: keychain.SecurityPath}
+	}
+)
+
+// newForeverDB builds the ForeverDB client. The key is read from the Keychain
+// on every call, so a missing key fails the game tools with a message that
+// names the fix instead of stopping the server from starting.
+func newForeverDB(cfg config.Config, kc keychain.Keychain) *foreverdb.Client {
+	return &foreverdb.Client{
+		BaseURL: foreverDBBaseURL,
+		Cache:   &foreverdb.Cache{Dir: cfg.CacheDir + "/foreverdb"},
+		Key: func(ctx context.Context) (string, error) {
+			return kc.Get(ctx, "foreverdb")
+		},
+	}
+}
 
 // nopWriteCloser lets the protocol writer outlive the server.
 type nopWriteCloser struct{ io.Writer }
@@ -24,8 +52,24 @@ func cmdServe(e *env, args []string) error {
 		fmt.Fprint(e.stderr, usage)
 		return errUsage
 	}
+	cfg, err := config.Load(configPath())
+	if err != nil {
+		return err
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
+	fdb := newForeverDB(cfg, secrets())
+	done := make(chan struct{})
+	defer func() { stop(); <-done }() // end the check before the stderr writer goes away
+	go func() {
+		defer close(done)
+		// A failed check only means the cache may be stale or the key is not set yet.
+		checkCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		defer cancel()
+		if err := fdb.CheckMeta(checkCtx); err != nil {
+			fmt.Fprintln(e.stderr, "wow-mcp: ForeverDB build check:", err)
+		}
+	}()
 	transport := &mcp.IOTransport{Reader: io.NopCloser(e.stdin), Writer: nopWriteCloser{e.stdout}}
-	return tools.New(tools.Deps{}).Run(ctx, transport)
+	return tools.New(tools.Deps{Game: fdb}).Run(ctx, transport)
 }

@@ -51,7 +51,9 @@ func (d Deps) now() time.Time {
 // New builds the MCP server and registers the tools its deps support.
 func New(deps Deps) *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{Name: serverName, Version: serverVersion}, nil)
-	_ = deps // tool groups register here as they are added
+	if deps.Game != nil {
+		registerGame(srv, deps.Game)
+	}
 	return srv
 }
 

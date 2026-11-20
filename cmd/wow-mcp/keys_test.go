@@ -98,6 +98,7 @@ func TestKeysUsageErrors(t *testing.T) {
 }
 
 func TestNoArgsServes(t *testing.T) {
+	useTestServe(t)
 	// Empty stdin: the server sees EOF and exits cleanly, writing nothing to stdout.
 	code, stdout, stderr := runKeys(t, &fakeKeyStore{}, "")
 	if code != 0 || stdout != "" {
