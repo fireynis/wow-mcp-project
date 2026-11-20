@@ -90,9 +90,17 @@ func TestKeysList(t *testing.T) {
 }
 
 func TestKeysUsageErrors(t *testing.T) {
-	for _, args := range [][]string{{"keys"}, {"keys", "frob"}, {"keys", "set"}, {"keys", "set", "foreverdb", "extra"}, {"keys", "list", "extra"}, {"bogus"}, {}} {
+	for _, args := range [][]string{{"keys"}, {"keys", "frob"}, {"keys", "set"}, {"keys", "set", "foreverdb", "extra"}, {"keys", "list", "extra"}, {"bogus"}, {"serve", "extra"}} {
 		if code, _, _ := runKeys(t, &fakeKeyStore{}, "abc12345xyz", args...); code != 2 {
 			t.Errorf("%v: exit = %d, want 2", args, code)
 		}
+	}
+}
+
+func TestNoArgsServes(t *testing.T) {
+	// Empty stdin: the server sees EOF and exits cleanly, writing nothing to stdout.
+	code, stdout, stderr := runKeys(t, &fakeKeyStore{}, "")
+	if code != 0 || stdout != "" {
+		t.Errorf("exit = %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 }

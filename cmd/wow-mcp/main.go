@@ -8,9 +8,10 @@ import (
 	"os"
 )
 
-const usage = `Usage: wow-mcp <command>
+const usage = `Usage: wow-mcp [command]
 
 Commands:
+  serve                run the MCP server on stdin/stdout (the default)
   keys set <account>   store a secret, read from standard input, in the login Keychain
                        (blizzard-client-id, blizzard-client-secret, foreverdb,
                        blizzard-user-token, blizzard-user-token-expiry)
@@ -31,11 +32,11 @@ func main() {
 
 func runIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprint(stderr, usage)
-		return 2
+		args = []string{"serve"}
 	}
 	commands := map[string]func(*env, []string) error{
-		"keys": cmdKeys,
+		"serve": cmdServe,
+		"keys":  cmdKeys,
 	}
 	cmd, ok := commands[args[0]]
 	if !ok {
