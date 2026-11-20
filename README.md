@@ -77,13 +77,17 @@ cache_dir = "/Users/you/Library/Caches/wow-app"   # optional; absolute or ~/...,
 static_namespace = "static-forever-us"            # optional
 
 [main]                             # required
-realm = "stormrage-forever"
 name = "Leafy"
+surname = "Oakheart"
 
 [[characters]]                     # optional, repeatable
-realm = "stormrage-forever"
 name = "Twink"
+surname = "Oakheart"
 ```
+
+WoW Forever has no realms: the Blizzard API addresses a character as `name-surname`
+(`/profile/wow/character/leafy-oakheart`). `wow-mcp probe` lists every character on your
+Battle.net account with its surname.
 
 ## Tools
 

@@ -108,7 +108,7 @@ func cmdDoctor(e *env, args []string) error {
 	default:
 		client := &blizzard.Client{BaseURL: probeBase(cfg.Region), Auth: auth, HTTP: auth.HTTP}
 		status, _, err := client.Raw(ctx, blizzard.CharPath(cfg.Main), "profile-forever-"+cfg.Region, false)
-		name := fmt.Sprintf("main character %s on %s", cfg.Main.Name, cfg.Main.Realm)
+		name := fmt.Sprintf("main character %s %s", cfg.Main.Name, cfg.Main.Surname)
 		switch {
 		case err != nil:
 			r.fail(name, err.Error(), "")

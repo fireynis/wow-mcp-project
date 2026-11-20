@@ -43,7 +43,7 @@ func useProbeServer(t *testing.T, loggedIn bool) {
 			w.Write([]byte(`{"access_token":"` + probeAppToken + `","expires_in":3600}`))
 			return
 		}
-		if strings.Contains(r.URL.Path, "/realm/") {
+		if strings.Contains(r.URL.Path, "/item/") {
 			w.WriteHeader(http.StatusForbidden)
 		}
 		w.Write([]byte(`{"echo":"` + r.Header.Get("Authorization") + `","secret":"` + probeSecret + `","ns":"` + r.URL.Query().Get("namespace") + `"}`))
@@ -108,21 +108,20 @@ func TestProbeTableListsEveryPath(t *testing.T) {
 	}
 	for _, p := range []string{
 		"/profile/user/wow",
-		"/profile/wow/character/stormrage-forever/leafy",
-		"/profile/wow/character/stormrage-forever/leafy/equipment",
-		"/profile/wow/character/stormrage-forever/leafy/specializations",
-		"/profile/wow/character/stormrage-forever/leafy/statistics",
-		"/profile/wow/character/stormrage-forever/leafy/reputations",
-		"/profile/wow/character/stormrage-forever/leafy/professions",
-		"/profile/wow/character/stormrage-forever/leafy/character-media",
-		"/data/wow/realm/index",
+		"/profile/wow/character/leafy-oakheart",
+		"/profile/wow/character/leafy-oakheart/equipment",
+		"/profile/wow/character/leafy-oakheart/specializations",
+		"/profile/wow/character/leafy-oakheart/statistics",
+		"/profile/wow/character/leafy-oakheart/reputations",
+		"/profile/wow/character/leafy-oakheart/professions",
+		"/profile/wow/character/leafy-oakheart/character-media",
 		"/data/wow/item/19019",
 	} {
 		if n := strings.Count(out.String(), p+" "); n < 2 {
 			t.Errorf("%s listed %d times (want app and user rows):\n%s", p, n, out.String())
 		}
 	}
-	for _, s := range []string{"profile-forever-us", "dynamic-forever-us", "static-forever-us", "app", "user", "403", "200"} {
+	for _, s := range []string{"profile-forever-us", "static-forever-us", "app", "user", "403", "200"} {
 		if !strings.Contains(out.String(), s) {
 			t.Errorf("table lacks %q:\n%s", s, out.String())
 		}

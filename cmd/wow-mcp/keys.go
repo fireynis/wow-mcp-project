@@ -5,14 +5,42 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
+
+	"golang.org/x/term"
 
 	"wowapp/internal/keychain"
 )
 
 // maxKeyInput is how much of standard input "keys set" reads.
 const maxKeyInput = 4 << 10
+
+// isTerminal and readHidden let tests stand in for a real terminal.
+var (
+	isTerminal = term.IsTerminal
+	readHidden = term.ReadPassword
+)
+
+// readSecret reads the key. At a terminal it prompts on stderr and reads one
+// line without echoing it; otherwise (a pipe or file) it reads all of stdin.
+func readSecret(e *env, account string) (string, error) {
+	if f, ok := e.stdin.(*os.File); ok && isTerminal(int(f.Fd())) {
+		fmt.Fprintf(e.stderr, "Paste the %s key and press Enter (input is hidden): ", account)
+		b, err := readHidden(int(f.Fd()))
+		fmt.Fprintln(e.stderr)
+		if err != nil {
+			return "", fmt.Errorf("reading the key from the terminal: %w", err)
+		}
+		return strings.TrimSpace(string(b)), nil
+	}
+	input, err := io.ReadAll(io.LimitReader(e.stdin, maxKeyInput))
+	if err != nil {
+		return "", fmt.Errorf("reading standard input: %w", err)
+	}
+	return strings.TrimSpace(string(input)), nil
+}
 
 // keyStorer is the part of the Keychain the keys command uses.
 type keyStorer interface {
@@ -54,11 +82,10 @@ func keysSet(e *env, account string) error {
 		fmt.Fprintf(e.stderr, "wow-mcp keys set: unknown account %q (one of %s)\n", account, strings.Join(keychain.Accounts, ", "))
 		return errUsage
 	}
-	input, err := io.ReadAll(io.LimitReader(e.stdin, maxKeyInput))
+	secret, err := readSecret(e, account)
 	if err != nil {
-		return fmt.Errorf("reading standard input: %w", err)
+		return err
 	}
-	secret := strings.TrimSpace(string(input))
 	if secret == "" {
 		return errors.New("no key on standard input")
 	}

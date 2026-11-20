@@ -19,11 +19,11 @@ func writeConfig(t *testing.T, body string) string {
 func TestLoadMinimal(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	cfg, err := Load(writeConfig(t, "region = \"us\"\n[main]\nrealm = \"stormrage-forever\"\nname = \"Leafy\"\n"))
+	cfg, err := Load(writeConfig(t, "region = \"us\"\n[main]\nname = \"Leafy\"\nsurname = \"Oakheart\"\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Region != "us" || cfg.Main != (Character{Realm: "stormrage-forever", Name: "Leafy"}) {
+	if cfg.Region != "us" || cfg.Main != (Character{Name: "Leafy", Surname: "Oakheart"}) {
 		t.Errorf("cfg = %+v", cfg)
 	}
 	if want := filepath.Join(home, "Library", "Caches", "wow-app"); cfg.CacheDir != want {
@@ -39,14 +39,14 @@ func TestLoadFull(t *testing.T) {
 cache_dir = "/var/cache/x"
 static_namespace = "static-1.60.1_70399-forever-us"
 [main]
-realm = "a"
 name = "B"
+surname = "a"
 [[characters]]
-realm = "c"
 name = "D"
+surname = "c"
 [[characters]]
-realm = "e"
 name = "F"
+surname = "e"
 `))
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ name = "F"
 }
 
 func TestLoadUnknownKey(t *testing.T) {
-	_, err := Load(writeConfig(t, "region = \"us\"\nregoin = \"x\"\n[main]\nrealm = \"a\"\nname = \"b\"\n"))
+	_, err := Load(writeConfig(t, "region = \"us\"\nregoin = \"x\"\n[main]\nname = \"b\"\nsurname = \"a\"\n"))
 	if err == nil || !strings.Contains(err.Error(), "regoin") {
 		t.Fatalf("err = %v, want it to name regoin", err)
 	}
@@ -72,7 +72,7 @@ func TestLoadMissingMain(t *testing.T) {
 
 func TestLoadBadRegion(t *testing.T) {
 	for _, region := range []string{"kr", ""} {
-		_, err := Load(writeConfig(t, "region = \""+region+"\"\n[main]\nrealm = \"a\"\nname = \"b\"\n"))
+		_, err := Load(writeConfig(t, "region = \""+region+"\"\n[main]\nname = \"b\"\nsurname = \"a\"\n"))
 		if err == nil || !strings.Contains(err.Error(), "us, eu, tw") || !strings.Contains(err.Error(), "region") {
 			t.Errorf("region %q: err = %v, want it to name region and list us, eu, tw", region, err)
 		}
@@ -86,7 +86,7 @@ func TestLoadMissingFile(t *testing.T) {
 }
 
 func TestLoadIncompleteCharacter(t *testing.T) {
-	_, err := Load(writeConfig(t, "region = \"us\"\n[main]\nrealm = \"a\"\nname = \"b\"\n[[characters]]\nrealm = \"c\"\n"))
+	_, err := Load(writeConfig(t, "region = \"us\"\n[main]\nname = \"b\"\nsurname = \"a\"\n[[characters]]\nsurname = \"c\"\n"))
 	if err == nil || !strings.Contains(err.Error(), "characters") {
 		t.Fatalf("err = %v, want it to name characters", err)
 	}
@@ -102,7 +102,7 @@ func TestDefaultPath(t *testing.T) {
 func TestCacheDirTildeExpands(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	cfg, err := Load(writeConfig(t, "region = \"us\"\ncache_dir = \"~/x\"\n[main]\nrealm = \"a\"\nname = \"b\"\n"))
+	cfg, err := Load(writeConfig(t, "region = \"us\"\ncache_dir = \"~/x\"\n[main]\nname = \"b\"\nsurname = \"a\"\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestCacheDirTildeExpands(t *testing.T) {
 }
 
 func TestCacheDirRelativeRejected(t *testing.T) {
-	_, err := Load(writeConfig(t, "region = \"us\"\ncache_dir = \"rel/x\"\n[main]\nrealm = \"a\"\nname = \"b\"\n"))
+	_, err := Load(writeConfig(t, "region = \"us\"\ncache_dir = \"rel/x\"\n[main]\nname = \"b\"\nsurname = \"a\"\n"))
 	if err == nil || !strings.Contains(err.Error(), "cache_dir") {
 		t.Fatalf("err = %v, want one naming cache_dir", err)
 	}
@@ -120,7 +120,7 @@ func TestCacheDirRelativeRejected(t *testing.T) {
 
 func TestCacheDirDefaultIsAbsolute(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	cfg, err := Load(writeConfig(t, "region = \"us\"\n[main]\nrealm = \"a\"\nname = \"b\"\n"))
+	cfg, err := Load(writeConfig(t, "region = \"us\"\n[main]\nname = \"b\"\nsurname = \"a\"\n"))
 	if err != nil || !filepath.IsAbs(cfg.CacheDir) {
 		t.Fatalf("cfg = %+v err = %v", cfg, err)
 	}

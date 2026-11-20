@@ -14,10 +14,12 @@ import (
 // Regions are the Blizzard API regions wow-mcp supports (KR is known to 403).
 var Regions = []string{"us", "eu", "tw"}
 
-// Character is a realm slug and a character name.
+// Character is a WoW Forever character. Forever has no realms: the API
+// addresses a character by its name and surname ("Leafy" "Oakheart" ->
+// /profile/wow/character/leafy-oakheart).
 type Character struct {
-	Realm string `toml:"realm"`
-	Name  string `toml:"name"`
+	Name    string `toml:"name"`
+	Surname string `toml:"surname"`
 }
 
 // Config is the loaded configuration.
@@ -65,12 +67,12 @@ func Load(path string) (Config, error) {
 	if !validRegion(f.Region) {
 		return Config{}, fmt.Errorf("config %s: region must be one of %s (got %q)", path, strings.Join(Regions, ", "), f.Region)
 	}
-	if f.Main.Realm == "" || f.Main.Name == "" {
-		return Config{}, fmt.Errorf("config %s: [main] needs both realm and name", path)
+	if f.Main.Name == "" || f.Main.Surname == "" {
+		return Config{}, fmt.Errorf("config %s: [main] needs both name and surname", path)
 	}
 	for i, c := range f.Characters {
-		if c.Realm == "" || c.Name == "" {
-			return Config{}, fmt.Errorf("config %s: [[characters]] entry %d needs both realm and name", path, i+1)
+		if c.Name == "" || c.Surname == "" {
+			return Config{}, fmt.Errorf("config %s: [[characters]] entry %d needs both name and surname", path, i+1)
 		}
 	}
 	cacheDir := f.CacheDir

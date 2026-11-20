@@ -25,7 +25,7 @@ func (r *notFoundRunner) Run(context.Context, string, []string, []byte) ([]byte,
 func useTestServe(t *testing.T) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "config.toml")
-	body := "region = \"us\"\ncache_dir = \"" + t.TempDir() + "\"\n[main]\nrealm = \"stormrage-forever\"\nname = \"Leafy\"\n"
+	body := "region = \"us\"\ncache_dir = \"" + t.TempDir() + "\"\n[main]\nname = \"Leafy\"\nsurname = \"Oakheart\"\n"
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}

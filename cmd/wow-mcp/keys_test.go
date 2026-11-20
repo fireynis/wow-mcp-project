@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"os"
 	"strings"
 	"testing"
 )
@@ -103,5 +104,33 @@ func TestNoArgsServes(t *testing.T) {
 	code, stdout, stderr := runKeys(t, &fakeKeyStore{}, "")
 	if code != 0 || stdout != "" {
 		t.Errorf("exit = %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+}
+
+// At a terminal, "keys set" prompts on stderr and reads one hidden line, so
+// pressing Enter finishes it instead of waiting for end-of-input.
+func TestKeysSetPromptsAtTerminal(t *testing.T) {
+	store := &fakeKeyStore{}
+	origKS, origTerm, origRead := keyStore, isTerminal, readHidden
+	keyStore = func() keyStorer { return store }
+	isTerminal = func(int) bool { return true }
+	readHidden = func(int) ([]byte, error) { return []byte(" client-id-123 "), nil }
+	t.Cleanup(func() { keyStore, isTerminal, readHidden = origKS, origTerm, origRead })
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	defer w.Close()
+	var out, errb bytes.Buffer
+	if code := runIO([]string{"keys", "set", "blizzard-client-id"}, r, &out, &errb); code != 0 {
+		t.Fatalf("exit = %d, stderr %q", code, errb.String())
+	}
+	if len(store.sets) != 1 || store.sets[0] != [2]string{"blizzard-client-id", "client-id-123"} {
+		t.Errorf("Set calls = %v", store.sets)
+	}
+	if want := "Paste the blizzard-client-id key and press Enter (input is hidden): \n"; errb.String() != want {
+		t.Errorf("stderr = %q, want %q", errb.String(), want)
 	}
 }

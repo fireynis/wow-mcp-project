@@ -114,7 +114,6 @@ func cmdProbe(e *env, args []string) error {
 		reqs = append(reqs, probeRequest{char + "/" + sub, profileNS})
 	}
 	reqs = append(reqs,
-		probeRequest{"/data/wow/realm/index", "dynamic-forever-" + cfg.Region},
 		probeRequest{"/data/wow/item/" + probeItemID, staticNS},
 	)
 
