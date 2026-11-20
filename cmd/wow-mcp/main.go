@@ -20,6 +20,8 @@ Commands:
                        (blizzard-client-id, blizzard-client-secret, foreverdb,
                        blizzard-user-token, blizzard-user-token-expiry)
   keys list            say which secrets are stored (never their values)
+  doctor               check the config, keys, tokens, ForeverDB and your main
+                       character; exits 1 if anything fails
 `
 
 var errUsage = errors.New("usage")
@@ -39,10 +41,11 @@ func runIO(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		args = []string{"serve"}
 	}
 	commands := map[string]func(*env, []string) error{
-		"serve": cmdServe,
-		"keys":  cmdKeys,
-		"login": cmdLogin,
-		"probe": cmdProbe,
+		"serve":  cmdServe,
+		"keys":   cmdKeys,
+		"login":  cmdLogin,
+		"probe":  cmdProbe,
+		"doctor": cmdDoctor,
 	}
 	cmd, ok := commands[args[0]]
 	if !ok {
