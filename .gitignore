@@ -1,2 +1,11 @@
 /build/
 .superpowers/
+# Secrets never live in this repo: keys and tokens belong in the macOS Keychain (wow-mcp keys set ...).
+.env
+.env.*
+*.pem
+*.key
+*secret*
+*token*.json
+# Raw probe output holds personal character data.
+probe-*/

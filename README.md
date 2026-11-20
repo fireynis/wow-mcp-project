@@ -18,6 +18,9 @@ visible link wherever you show the data, you must not resell the data or present
 a key must never be shipped inside something you give out. This repo contains no key; yours stays in
 your own login Keychain.
 
+Never commit a key here: this repo is public. `.githooks/pre-commit` refuses staged changes that
+look like a key, secret or token; enable it once per clone with `git config core.hooksPath .githooks`.
+
 ## Build
 
 ```sh

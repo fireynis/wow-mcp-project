@@ -1,0 +1,15 @@
+#!/bin/sh
+# Refuses commits that look like they contain a real API key, client secret or token.
+# Keys belong in the macOS Keychain (wow-mcp keys set ...), never in this public repo.
+# Test fixtures use obviously fake values; mark a deliberate exception with "gitleaks:allow".
+pattern='(api[_-]?key|client[_-]?secret|access_token|refresh_token|x-api-key|authorization)["'"'"' ]*[:=]["'"'"' ]*[A-Za-z0-9_\-]{20,}'
+hits=$(git diff --cached -U0 --diff-filter=ACM | grep -E '^\+' | grep -v '^+++' | grep -iE "$pattern" | grep -v 'gitleaks:allow')
+if [ -n "$hits" ]; then
+  echo "pre-commit: possible secret in staged changes; keys belong in the Keychain:" >&2
+  echo "$hits" >&2
+  exit 1
+fi
+bad=$(git diff --cached --name-only --diff-filter=ACM | grep -iE '(^|/)\.env|\.pem$|\.key$|secret')
+if [ -n "$bad" ]; then
+  echo "pre-commit: refusing secret-looking files:" >&2; echo "$bad" >&2; exit 1
+fi
