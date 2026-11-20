@@ -224,16 +224,20 @@ func newLoginRig(t *testing.T, browser func(authURL *url.URL, callback string)) 
 }
 
 func TestLoginStoresTokenAndExpiry(t *testing.T) {
-	var authQuery url.Values
-	var page string
+	type seen struct {
+		q    url.Values
+		page string
+	}
+	browser := make(chan seen, 1)
 	r := newLoginRig(t, func(u *url.URL, cb string) {
-		authQuery = u.Query()
+		s := seen{q: u.Query()}
 		resp, err := http.Get(cb + "?code=thecode&state=" + u.Query().Get("state"))
 		if err == nil {
 			b, _ := io.ReadAll(resp.Body)
 			resp.Body.Close()
-			page = string(b)
+			s.page = string(b)
 		}
+		browser <- s
 	})
 	expires, err := r.auth.Login(context.Background())
 	if err != nil {
@@ -249,6 +253,13 @@ func TestLoginStoresTokenAndExpiry(t *testing.T) {
 	if got := r.keys.m[keychain.BlizzardUserExpiry]; got != strconv.FormatInt(want.Unix(), 10) {
 		t.Errorf("stored expiry = %q", got)
 	}
+	var sn seen
+	select {
+	case sn = <-browser:
+	case <-time.After(5 * time.Second):
+		t.Fatal("browser never finished")
+	}
+	authQuery, page := sn.q, sn.page
 	form := <-r.tokenFm
 	if form.Get("grant_type") != "authorization_code" || form.Get("code") != "thecode" || form.Get("redirect_uri") != "http://localhost:47830/callback" {
 		t.Errorf("token form = %v", form)
