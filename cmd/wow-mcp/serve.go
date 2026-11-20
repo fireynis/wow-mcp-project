@@ -10,6 +10,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"wowapp/internal/blizzard"
 	"wowapp/internal/config"
 	"wowapp/internal/foreverdb"
 	"wowapp/internal/keychain"
@@ -71,5 +72,15 @@ func cmdServe(e *env, args []string) error {
 		}
 	}()
 	transport := &mcp.IOTransport{Reader: io.NopCloser(e.stdin), Writer: nopWriteCloser{e.stdout}}
-	return tools.New(tools.Deps{Game: fdb}).Run(ctx, transport)
+	auth := newAuth()
+	chars := &blizzard.Profile{
+		Client: &blizzard.Client{BaseURL: probeBase(cfg.Region), Auth: auth, HTTP: auth.HTTP},
+		Region: cfg.Region,
+	}
+	deps := tools.Deps{
+		Game:       fdb,
+		Chars:      chars,
+		Characters: append([]config.Character{cfg.Main}, cfg.Others...),
+	}
+	return tools.New(deps).Run(ctx, transport)
 }

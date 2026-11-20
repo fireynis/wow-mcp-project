@@ -9,6 +9,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"wowapp/internal/blizzard"
 	"wowapp/internal/config"
 )
 
@@ -24,6 +25,7 @@ type GameSource interface {
 
 // CharacterSource answers read-only character queries (Blizzard profile API).
 type CharacterSource interface {
+	Account(ctx context.Context) ([]blizzard.AccountCharacter, error)
 	Summary(ctx context.Context, c config.Character) (any, error)
 	Equipment(ctx context.Context, c config.Character) (any, error)
 	Talents(ctx context.Context, c config.Character) (any, error)
@@ -37,6 +39,9 @@ type CharacterSource interface {
 type Deps struct {
 	Game  GameSource
 	Chars CharacterSource
+	// Characters are the configured characters, the main first. The
+	// character tools need at least one.
+	Characters []config.Character
 	// Now reports the current time; nil means time.Now.
 	Now func() time.Time
 }
@@ -53,6 +58,9 @@ func New(deps Deps) *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{Name: serverName, Version: serverVersion}, nil)
 	if deps.Game != nil {
 		registerGame(srv, deps.Game)
+	}
+	if deps.Chars != nil && len(deps.Characters) > 0 {
+		registerCharacters(srv, deps.Chars, deps.Characters)
 	}
 	return srv
 }

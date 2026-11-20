@@ -174,7 +174,7 @@ func TestDoctorNoLoginWarnsOnceAndExitsZero(t *testing.T) {
 func TestDoctorStatesWhichToolGroupsServeRegisters(t *testing.T) {
 	useDoctor(t, doctorOpts{})
 	_, out := runDoctor(t)
-	for _, want := range []string{"game tools: registered", "character tools: not built yet (waiting on probe findings)"} {
+	for _, want := range []string{"game tools: registered", "character tools: registered"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}
@@ -198,7 +198,7 @@ func TestDoctorRejectedForeverDBKeyFails(t *testing.T) {
 func TestDoctorMainCharacterNotFound(t *testing.T) {
 	useDoctor(t, doctorOpts{charStatus: http.StatusNotFound})
 	code, out := runDoctor(t)
-	if code != 1 || !strings.Contains(out, "docs/blizzard-forever-api.md") {
+	if code != 1 || !strings.Contains(out, "check [main] name and surname") {
 		t.Errorf("exit %d\n%s", code, out)
 	}
 }

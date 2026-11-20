@@ -5,10 +5,10 @@ data from [ForeverDB](https://foreverdb.net). It never writes to Blizzard, Forev
 
 ## Status
 
-The 16 game tools below work. The character tools (your gear, talents and so on from the Blizzard
-API) are not built yet: they wait on the findings from `wow-mcp probe`, which shows what Blizzard's
-Forever profile API actually returns. Until then `wow-mcp doctor` reports whether your main
-character can be looked up.
+The 16 game tools (ForeverDB) and the 7 character tools (Blizzard's WoW Forever profile API) work.
+Character pages need only the Blizzard client; the Battle.net login (`wow-mcp login`, valid about a
+day) is needed just for `list_characters` to show every character on the account. See
+`docs/blizzard-forever-api.md` for what the profile API returns.
 
 ## Data source and terms
 
@@ -94,6 +94,11 @@ Battle.net account with its surname.
 `search_items`, `get_item`, `list_dungeons`, `get_dungeon`, `get_bis`, `search_quests`, `get_quest`,
 `list_zones`, `get_vendor`, `get_itemset`, `get_class`, `get_profession`, `get_endgame`,
 `get_recent_changes`, `search_articles`, `get_article`.
+
+Character tools: `list_characters`, `get_character`, `get_equipment`, `get_talents`, `get_stats`,
+`get_reputations`, `get_professions`. Each takes an optional `character`: a configured name
+(`Leafy`) or a name and surname (`Leafy Oakheart`); without it, the `[main]` character. Answers are
+trimmed to names and values (no links or media).
 
 Lists come 25 entries at a time with a `truncated` flag when an answer was cut. If the ForeverDB key
 is missing the tools say to run `wow-mcp keys set foreverdb`.

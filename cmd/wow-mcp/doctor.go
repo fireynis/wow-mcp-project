@@ -77,10 +77,10 @@ func cmdDoctor(e *env, args []string) error {
 			have[account] = true
 			r.ok(name, "present")
 		case account == keychain.BlizzardUserToken || account == keychain.BlizzardUserExpiry:
-			// Only the character tools need the login, and they are not
-			// built yet, so this is a warning; it is the one report of it.
+			// Only list_characters needs the login (character pages answer
+			// with the app token), so this is a warning; it is the one report of it.
 			loginKeysMissing = true
-			r.warn(name, "missing; run wow-mcp login (only the character tools need it).")
+			r.warn(name, "missing; run wow-mcp login (only list_characters needs it).")
 		default:
 			r.fail(name, "missing.", "run wow-mcp keys set "+account)
 		}
@@ -115,14 +115,14 @@ func cmdDoctor(e *env, args []string) error {
 		case status >= 200 && status < 300:
 			r.ok(name, "found")
 		case status == http.StatusNotFound:
-			r.fail(name, "not found (Blizzard's Forever character lookup may not work yet; see docs/blizzard-forever-api.md once probe has run).", "")
+			r.fail(name, "not found.", "check [main] name and surname in the config; wow-mcp probe lists the account's characters")
 		default:
 			r.fail(name, fmt.Sprintf("Blizzard answered %d %s.", status, http.StatusText(status)), "")
 		}
 	}
 
 	r.ok("serve", "game tools: registered")
-	r.skip("serve", "character tools: not built yet (waiting on probe findings)")
+	r.ok("serve", "character tools: registered")
 
 	if r.failed {
 		return errors.New("some checks failed")
