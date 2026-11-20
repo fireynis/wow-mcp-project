@@ -66,6 +66,8 @@ func useDoctor(t *testing.T, o doctorOpts) {
 				w.WriteHeader(http.StatusUnauthorized)
 			}
 			w.Write([]byte(`{"data":{},"meta":{}}`))
+		case r.URL.Path == "/companion/dungeons":
+			w.Write([]byte(`{"data":[],"meta":{}}`))
 		case strings.HasPrefix(r.URL.Path, "/profile/wow/character/"):
 			w.WriteHeader(o.charStatus)
 			w.Write([]byte(`{}`))
@@ -86,14 +88,17 @@ func useDoctor(t *testing.T, o doctorOpts) {
 	}
 	delete(keys, o.omit)
 	kc := keychain.Keychain{Runner: mapRunner(keys), Path: keychain.SecurityPath}
-	oldSecrets, oldAuth, oldBase, oldFDB := secrets, newAuth, probeBase, doctorForeverDBBase
+	oldSecrets, oldAuth, oldBase, oldFDB, oldFC := secrets, newAuth, probeBase, doctorForeverDBBase, doctorCompanionBase
+	doctorCompanionBase = srv.URL + "/companion"
 	secrets = func() keychain.Keychain { return kc }
 	newAuth = func() *blizzard.Auth {
 		return &blizzard.Auth{TokenURL: srv.URL + "/token", Keys: kc, HTTP: srv.Client()}
 	}
 	probeBase = func(string) string { return srv.URL }
 	doctorForeverDBBase = srv.URL
-	t.Cleanup(func() { secrets, newAuth, probeBase, doctorForeverDBBase = oldSecrets, oldAuth, oldBase, oldFDB })
+	t.Cleanup(func() {
+		secrets, newAuth, probeBase, doctorForeverDBBase, doctorCompanionBase = oldSecrets, oldAuth, oldBase, oldFDB, oldFC
+	})
 }
 
 func runDoctor(t *testing.T) (int, string) {
@@ -174,7 +179,7 @@ func TestDoctorNoLoginWarnsOnceAndExitsZero(t *testing.T) {
 func TestDoctorStatesWhichToolGroupsServeRegisters(t *testing.T) {
 	useDoctor(t, doctorOpts{})
 	_, out := runDoctor(t)
-	for _, want := range []string{"game tools: registered", "character tools: registered"} {
+	for _, want := range []string{"game tools: registered", "character tools: registered", "Forever Companion tools: registered", "ok    Forever Companion: reachable"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 	"wowapp/internal/blizzard"
 	"wowapp/internal/config"
+	"wowapp/internal/forevercompanion"
 	"wowapp/internal/foreverdb"
 	"wowapp/internal/keychain"
 	"wowapp/internal/tools"
@@ -80,6 +82,7 @@ func cmdServe(e *env, args []string) error {
 	deps := tools.Deps{
 		Game:       fdb,
 		Chars:      chars,
+		Companion:  &forevercompanion.Client{HTTP: &http.Client{Timeout: 20 * time.Second}},
 		Characters: append([]config.Character{cfg.Main}, cfg.Others...),
 	}
 	return tools.New(deps).Run(ctx, transport)

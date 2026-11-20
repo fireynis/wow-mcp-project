@@ -39,6 +39,8 @@ type CharacterSource interface {
 type Deps struct {
 	Game  GameSource
 	Chars CharacterSource
+	// Companion is Forever Companion, a second, keyless game-data source.
+	Companion CompanionSource
 	// Characters are the configured characters, the main first. The
 	// character tools need at least one.
 	Characters []config.Character
@@ -58,6 +60,9 @@ func New(deps Deps) *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{Name: serverName, Version: serverVersion}, nil)
 	if deps.Game != nil {
 		registerGame(srv, deps.Game)
+	}
+	if deps.Companion != nil {
+		registerCompanion(srv, deps.Companion)
 	}
 	if deps.Chars != nil && len(deps.Characters) > 0 {
 		registerCharacters(srv, deps.Chars, deps.Characters)

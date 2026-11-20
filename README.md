@@ -1,16 +1,17 @@
 # wow-mcp
 
 A read-only [MCP](https://modelcontextprotocol.io) server (stdio) that gives Claude WoW Forever game
-data from [ForeverDB](https://foreverdb.net). It never writes to Blizzard, ForeverDB or the game.
+data from [ForeverDB](https://foreverdb.net) and [Forever Companion](https://forevercompanion.io),
+and your characters from Blizzard's API. It never writes to Blizzard, either data source or the game.
 
 ## Status
 
-The 16 game tools (ForeverDB) and the 7 character tools (Blizzard's WoW Forever profile API) work.
+The 16 ForeverDB tools, the 10 Forever Companion tools and the 7 character tools (Blizzard's WoW Forever profile API) work.
 Character pages need only the Blizzard client; the Battle.net login (`wow-mcp login`, valid about a
 day) is needed just for `list_characters` to show every character on the account. See
 `docs/blizzard-forever-api.md` for what the profile API returns.
 
-## Data source and terms
+## Data sources and terms
 
 Game data comes from [ForeverDB](https://foreverdb.net) (https://foreverdb.net); every game tool
 result carries `"source": "https://foreverdb.net"`. Under ForeverDB's terms you must credit it with a
@@ -20,6 +21,14 @@ your own login Keychain.
 
 Never commit a key here: this repo is public. `.githooks/pre-commit` refuses staged changes that
 look like a key, secret or token; enable it once per clone with `git config core.hooksPath .githooks`.
+
+Game data also comes from [Forever Companion](https://forevercompanion.io) (https://forevercompanion.io),
+a free fan API with no key (120 requests a minute): dungeons with bosses, quests and loot, dungeon
+and elite quests, items with where they drop, rares, zones, reputations and class quests. Its data is
+gathered from ForeverChanges, Wowhead and Zockify and checked in game by players. Every
+`companion_*` tool result carries `"source": "https://forevercompanion.io"` and Forever Companion's
+own attribution text; it asks for a link back wherever its data is shown. Forever Companion is
+fan-made and not affiliated with Blizzard Entertainment.
 
 ## Build
 
@@ -94,6 +103,11 @@ Battle.net account with its surname.
 `search_items`, `get_item`, `list_dungeons`, `get_dungeon`, `get_bis`, `search_quests`, `get_quest`,
 `list_zones`, `get_vendor`, `get_itemset`, `get_class`, `get_profession`, `get_endgame`,
 `get_recent_changes`, `search_articles`, `get_article`.
+
+Forever Companion tools (no key needed): `companion_list_dungeons`, `companion_get_dungeon`,
+`companion_search_quests`, `companion_get_quest`, `companion_search_items`, `companion_get_item`,
+`companion_list_rares`, `companion_list_zones`, `companion_list_reputations`,
+`companion_class_quests`.
 
 Character tools: `list_characters`, `get_character`, `get_equipment`, `get_talents`, `get_stats`,
 `get_reputations`, `get_professions`. Each takes an optional `character`: a configured name

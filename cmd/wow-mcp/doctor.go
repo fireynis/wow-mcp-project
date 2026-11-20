@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -13,12 +14,16 @@ import (
 
 	"wowapp/internal/blizzard"
 	"wowapp/internal/config"
+	"wowapp/internal/forevercompanion"
 	"wowapp/internal/foreverdb"
 	"wowapp/internal/keychain"
 )
 
 // doctorForeverDBBase is the ForeverDB API doctor checks; tests replace it.
 var doctorForeverDBBase = foreverDBBaseURL
+
+// doctorCompanionBase is the Forever Companion API root; tests replace it.
+var doctorCompanionBase = forevercompanion.BaseURL
 
 // loginWarnWithin is how close to expiry the user token earns a warning.
 const loginWarnWithin = 2 * time.Hour
@@ -99,6 +104,7 @@ func cmdDoctor(e *env, args []string) error {
 		doctorUserToken(ctx, r, auth)
 	}
 	doctorForeverDB(ctx, r, kc, have[keychain.ForeverDB])
+	doctorCompanion(ctx, r)
 
 	switch {
 	case cfgErr != nil:
@@ -122,6 +128,7 @@ func cmdDoctor(e *env, args []string) error {
 	}
 
 	r.ok("serve", "game tools: registered")
+	r.ok("serve", "Forever Companion tools: registered")
 	r.ok("serve", "character tools: registered")
 
 	if r.failed {
@@ -174,4 +181,16 @@ func doctorForeverDB(ctx context.Context, r *report, kc keychain.Keychain, hasKe
 		return
 	}
 	r.ok(name, "/meta reachable with the stored key")
+}
+
+// doctorCompanion checks that Forever Companion answers. It needs no key, so a
+// failure only warns: the other tools still work.
+func doctorCompanion(ctx context.Context, r *report) {
+	const name = "Forever Companion"
+	c := &forevercompanion.Client{BaseURL: doctorCompanionBase, HTTP: &http.Client{Timeout: doctorHTTPTimeout}}
+	if _, err := c.Get(ctx, "/dungeons", url.Values{"q": {"deadmines"}}); err != nil {
+		r.warn(name, err.Error())
+		return
+	}
+	r.ok(name, "reachable (no key needed)")
 }
