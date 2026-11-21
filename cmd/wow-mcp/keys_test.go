@@ -84,7 +84,7 @@ func TestKeysSetReadsAtMost4KiB(t *testing.T) {
 func TestKeysList(t *testing.T) {
 	store := &fakeKeyStore{present: map[string]bool{"foreverdb": true}}
 	code, stdout, _ := runKeys(t, store, "", "keys", "list")
-	want := "blizzard-client-id  missing\nblizzard-client-secret  missing\nforeverdb  present\nblizzard-user-token  missing\nblizzard-user-token-expiry  missing\n"
+	want := "blizzard-client-id  missing\nblizzard-client-secret  missing\nforeverdb  present\nperplexity  missing\nblizzard-user-token  missing\nblizzard-user-token-expiry  missing\n"
 	if code != 0 || stdout != want {
 		t.Errorf("exit = %d, stdout %q, want %q", code, stdout, want)
 	}

@@ -1,0 +1,25 @@
+{
+  "id": "0a1b2c3d-test",
+  "model": "sonar",
+  "created": 1763683200,
+  "usage": {"prompt_tokens": 210, "completion_tokens": 96, "total_tokens": 306},
+  "citations": [
+    "https://example.com/forever-druid-changes",
+    "https://example.com/classic-druid-guide"
+  ],
+  "search_results": [
+    {"title": "WoW Forever Druid changes", "url": "https://example.com/forever-druid-changes", "date": "2026-11-13"},
+    {"title": "Classic Era Druid guide", "url": "https://example.com/classic-druid-guide"}
+  ],
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "content": "In WoW Forever, Bear Form now adds 20 health instead of 180 (November 7). The Classic Era guide describes the old value; Forever differs."
+      }
+    }
+  ]
+}

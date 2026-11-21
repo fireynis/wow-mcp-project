@@ -16,6 +16,7 @@ import (
 	"wowapp/internal/forevercompanion"
 	"wowapp/internal/foreverdb"
 	"wowapp/internal/keychain"
+	"wowapp/internal/perplexity"
 	"wowapp/internal/tools"
 )
 
@@ -40,6 +41,15 @@ func newForeverDB(cfg config.Config, kc keychain.Keychain) *foreverdb.Client {
 		Key: func(ctx context.Context) (string, error) {
 			return kc.Get(ctx, "foreverdb")
 		},
+	}
+}
+
+// newPerplexity builds the web search client; like ForeverDB, a missing key
+// fails only perplexity_search, with a message naming the fix.
+func newPerplexity(kc keychain.Keychain) *perplexity.Client {
+	return &perplexity.Client{
+		HTTP: &http.Client{Timeout: 45 * time.Second},
+		Key:  func(ctx context.Context) (string, error) { return kc.Get(ctx, keychain.Perplexity) },
 	}
 }
 
@@ -83,6 +93,7 @@ func cmdServe(e *env, args []string) error {
 		Game:       fdb,
 		Chars:      chars,
 		Companion:  &forevercompanion.Client{HTTP: &http.Client{Timeout: 20 * time.Second}},
+		Search:     newPerplexity(secrets()),
 		Characters: append([]config.Character{cfg.Main}, cfg.Others...),
 	}
 	return tools.New(deps).Run(ctx, transport)

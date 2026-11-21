@@ -6,7 +6,8 @@ and your characters from Blizzard's API. It never writes to Blizzard, either dat
 
 ## Status
 
-The 16 ForeverDB tools, the 10 Forever Companion tools and the 7 character tools (Blizzard's WoW Forever profile API) work.
+The 16 ForeverDB tools, the 10 Forever Companion tools, the 7 character tools (Blizzard's WoW Forever profile API)
+and `perplexity_search` work.
 Character pages need only the Blizzard client; the Battle.net login (`wow-mcp login`, valid about a
 day) is needed just for `list_characters` to show every character on the account. See
 `docs/blizzard-forever-api.md` for what the profile API returns.
@@ -30,6 +31,12 @@ gathered from ForeverChanges, Wowhead and Zockify and checked in game by players
 own attribution text; it asks for a link back wherever its data is shown. Forever Companion is
 fan-made and not affiliated with Blizzard Entertainment.
 
+`perplexity_search` is a broad web search through the [Perplexity API](https://docs.perplexity.ai),
+for guides and anything the game-data tools do not cover. It needs your own Perplexity API key. Its
+system prompt steers it to sources about WoW Forever and makes it say when a source describes
+Classic Era or another version instead. The server's MCP instructions tell clients the same: use
+the Forever tools first and treat web sources that are not about Forever as another version.
+
 ## Build
 
 ```sh
@@ -49,10 +56,11 @@ go build -o build/wow-mcp ./cmd/wow-mcp
    build/wow-mcp keys set blizzard-client-id
    build/wow-mcp keys set blizzard-client-secret
    build/wow-mcp keys set foreverdb
+   build/wow-mcp keys set perplexity   # optional: only perplexity_search needs it
    build/wow-mcp keys list        # which are stored, never their values
    ```
 
-   The accounts are `blizzard-client-id`, `blizzard-client-secret`, `foreverdb`,
+   The accounts are `blizzard-client-id`, `blizzard-client-secret`, `foreverdb`, `perplexity`,
    `blizzard-user-token` and `blizzard-user-token-expiry`. The last two are written by `login`;
    `blizzard-user-token-expiry` is stored as Unix seconds.
 4. **Write the config** (below).
@@ -108,6 +116,8 @@ Forever Companion tools (no key needed): `companion_list_dungeons`, `companion_g
 `companion_search_quests`, `companion_get_quest`, `companion_search_items`, `companion_get_item`,
 `companion_list_rares`, `companion_list_zones`, `companion_list_reputations`,
 `companion_class_quests`.
+
+Web search: `perplexity_search` (takes a `query`; returns a short answer and its source pages).
 
 Character tools: `list_characters`, `get_character`, `get_equipment`, `get_talents`, `get_stats`,
 `get_reputations`, `get_professions`. Each takes an optional `character`: a configured name

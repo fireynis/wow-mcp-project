@@ -20,19 +20,21 @@ const SecurityPath = "/usr/bin/security"
 // Service is the Keychain service every key is stored under.
 const Service = "wow-app"
 
-// The accounts: the Blizzard client credentials, the ForeverDB key, and the
+// The accounts: the Blizzard client credentials, the ForeverDB key, the
+// Perplexity key (optional: only perplexity_search needs it), and the
 // Battle.net user token with its expiry (a Unix timestamp in seconds, so it
 // is plain ASCII digits).
 const (
 	BlizzardClientID     = "blizzard-client-id"
 	BlizzardClientSecret = "blizzard-client-secret"
 	ForeverDB            = "foreverdb"
+	Perplexity           = "perplexity"
 	BlizzardUserToken    = "blizzard-user-token"
 	BlizzardUserExpiry   = "blizzard-user-token-expiry"
 )
 
 // Accounts lists every account, in the order "keys list" shows them.
-var Accounts = []string{BlizzardClientID, BlizzardClientSecret, ForeverDB, BlizzardUserToken, BlizzardUserExpiry}
+var Accounts = []string{BlizzardClientID, BlizzardClientSecret, ForeverDB, Perplexity, BlizzardUserToken, BlizzardUserExpiry}
 
 // ErrNotFound means the account has no item in the login Keychain.
 var ErrNotFound = errors.New("not in the login Keychain")

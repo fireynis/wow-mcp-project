@@ -18,6 +18,10 @@ const (
 	serverVersion = "0.1.0"
 )
 
+// Instructions tells the client what the server is for and how to keep WoW
+// Forever apart from the other versions of the game.
+const Instructions = `These tools answer questions about World of Warcraft: Forever (WoW Forever), Blizzard's own version of WoW. It started from Classic Era but has its own zones, dungeons, talents, items, quests, XP and patch changes, so Classic Era facts (and Season of Discovery, Hardcore, Anniversary, retail or private-server facts) are often wrong for it. Answer from these tools first: the character tools for the player's own character, then ForeverDB (search_items, get_bis, get_recent_changes and the rest) and Forever Companion (companion_*) for game data. Use perplexity_search for anything they do not cover, and put "WoW Forever" in the query. Treat any web source that is not about Forever as describing another version, and say so if you rely on it.`
+
 // GameSource answers read-only game-data queries (ForeverDB).
 type GameSource interface {
 	Get(ctx context.Context, path string, q url.Values) (json.RawMessage, error)
@@ -41,6 +45,8 @@ type Deps struct {
 	Chars CharacterSource
 	// Companion is Forever Companion, a second, keyless game-data source.
 	Companion CompanionSource
+	// Search is the broad web search (Perplexity).
+	Search WebSearcher
 	// Characters are the configured characters, the main first. The
 	// character tools need at least one.
 	Characters []config.Character
@@ -57,12 +63,15 @@ func (d Deps) now() time.Time {
 
 // New builds the MCP server and registers the tools its deps support.
 func New(deps Deps) *mcp.Server {
-	srv := mcp.NewServer(&mcp.Implementation{Name: serverName, Version: serverVersion}, nil)
+	srv := mcp.NewServer(&mcp.Implementation{Name: serverName, Version: serverVersion}, &mcp.ServerOptions{Instructions: Instructions})
 	if deps.Game != nil {
 		registerGame(srv, deps.Game)
 	}
 	if deps.Companion != nil {
 		registerCompanion(srv, deps.Companion)
+	}
+	if deps.Search != nil {
+		registerSearch(srv, deps.Search)
 	}
 	if deps.Chars != nil && len(deps.Characters) > 0 {
 		registerCharacters(srv, deps.Chars, deps.Characters)

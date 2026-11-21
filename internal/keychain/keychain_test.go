@@ -202,15 +202,15 @@ func TestBogusAccountRunsNothing(t *testing.T) {
 }
 
 func TestValidAccount(t *testing.T) {
-	for account, want := range map[string]bool{"blizzard-client-id": true, "blizzard-client-secret": true, "foreverdb": true, "blizzard-user-token": true, "blizzard-user-token-expiry": true, "bogus": false, "": false, "BlizzardClientID": false} {
+	for account, want := range map[string]bool{"blizzard-client-id": true, "blizzard-client-secret": true, "foreverdb": true, "perplexity": true, "blizzard-user-token": true, "blizzard-user-token-expiry": true, "bogus": false, "": false, "BlizzardClientID": false} {
 		if got := ValidAccount(account); got != want {
 			t.Errorf("ValidAccount(%q) = %v, want %v", account, got, want)
 		}
 	}
 }
 
-func TestAccountsAreTheFive(t *testing.T) {
-	want := []string{"blizzard-client-id", "blizzard-client-secret", "foreverdb", "blizzard-user-token", "blizzard-user-token-expiry"}
+func TestAccountsAreTheSix(t *testing.T) {
+	want := []string{"blizzard-client-id", "blizzard-client-secret", "foreverdb", "perplexity", "blizzard-user-token", "blizzard-user-token-expiry"}
 	if !slices.Equal(Accounts, want) {
 		t.Errorf("Accounts = %v, want %v", Accounts, want)
 	}

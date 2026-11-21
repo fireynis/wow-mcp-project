@@ -86,6 +86,8 @@ func cmdDoctor(e *env, args []string) error {
 			// with the app token), so this is a warning; it is the one report of it.
 			loginKeysMissing = true
 			r.warn(name, "missing; run wow-mcp login (only list_characters needs it).")
+		case account == keychain.Perplexity:
+			r.warn(name, "missing; run wow-mcp keys set perplexity (only perplexity_search needs it).")
 		default:
 			r.fail(name, "missing.", "run wow-mcp keys set "+account)
 		}
@@ -130,6 +132,7 @@ func cmdDoctor(e *env, args []string) error {
 	r.ok("serve", "game tools: registered")
 	r.ok("serve", "Forever Companion tools: registered")
 	r.ok("serve", "character tools: registered")
+	r.ok("serve", "web search tool (perplexity_search): registered")
 
 	if r.failed {
 		return errors.New("some checks failed")
