@@ -20,7 +20,7 @@ const (
 
 // Instructions tells the client what the server is for and how to keep WoW
 // Forever apart from the other versions of the game.
-const Instructions = `These tools answer questions about World of Warcraft: Forever (WoW Forever), Blizzard's own version of WoW. It started from Classic Era but has its own zones, dungeons, talents, items, quests, XP and patch changes, so Classic Era facts (and Season of Discovery, Hardcore, Anniversary, retail or private-server facts) are often wrong for it. Answer from these tools first: the character tools for the player's own character, then ForeverDB (search_items, get_bis, get_recent_changes and the rest) and Forever Companion (companion_*) for game data. Use perplexity_search for anything they do not cover, and put "WoW Forever" in the query. Treat any web source that is not about Forever as describing another version, and say so if you rely on it.`
+const Instructions = `These tools answer questions about World of Warcraft: Forever (WoW Forever), Blizzard's own version of WoW. It started from Classic Era but has its own zones, dungeons, talents, items, quests, XP and patch changes, so Classic Era facts (and Season of Discovery, Hardcore, Anniversary, retail or private-server facts) are often wrong for it. Answer from these tools first: the character tools for the player's own character, then ForeverDB (search_items, get_bis, get_recent_changes and the rest) and Forever Companion (companion_*) for game data. Use perplexity_search for anything they do not cover, and kagi_search to find specific pages or when Perplexity comes up thin; put "WoW Forever" in every web query. Treat any web source that is not about Forever as describing another version, and say so if you rely on it.`
 
 // GameSource answers read-only game-data queries (ForeverDB).
 type GameSource interface {
@@ -47,6 +47,8 @@ type Deps struct {
 	Companion CompanionSource
 	// Search is the broad web search (Perplexity).
 	Search WebSearcher
+	// Kagi is the second web search, returning result pages.
+	Kagi KagiSearcher
 	// Characters are the configured characters, the main first. The
 	// character tools need at least one.
 	Characters []config.Character
@@ -72,6 +74,9 @@ func New(deps Deps) *mcp.Server {
 	}
 	if deps.Search != nil {
 		registerSearch(srv, deps.Search)
+	}
+	if deps.Kagi != nil {
+		registerKagi(srv, deps.Kagi)
 	}
 	if deps.Chars != nil && len(deps.Characters) > 0 {
 		registerCharacters(srv, deps.Chars, deps.Characters)

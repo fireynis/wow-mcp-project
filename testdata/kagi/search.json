@@ -1,0 +1,11 @@
+{
+  "meta": {"trace": "test-trace", "node": "us-east", "ms": 412},
+  "data": {
+    "search": [
+      {"url": "https://example.com/forever-druid-leveling", "title": "WoW Forever Druid Leveling Guide 1-60", "snippet": "Updated for the\n November patches.", "time": "2026-11-14T10:00:00Z"},
+      {"url": "https://example.com/classic-druid", "title": "Classic Era Druid Leveling", "snippet": "Bear Form gives 180 health."},
+      {"url": "", "title": "no url, dropped"}
+    ],
+    "related_search": [{"query": "wow forever druid talents"}, "wow forever bear tank"]
+  }
+}

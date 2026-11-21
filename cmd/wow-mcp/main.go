@@ -17,7 +17,7 @@ Commands:
   probe [-out dir]     ask Blizzard what the Forever profile API returns for your
                        character; writes every answer (tokens scrubbed) to a directory
   keys set <account>   store a secret, read from standard input, in the login Keychain
-                       (blizzard-client-id, blizzard-client-secret, foreverdb, perplexity,
+                       (blizzard-client-id, blizzard-client-secret, foreverdb, perplexity, kagi,
                        blizzard-user-token, blizzard-user-token-expiry)
   keys list            say which secrets are stored (never their values)
   doctor               check the config, keys, tokens, ForeverDB and your main

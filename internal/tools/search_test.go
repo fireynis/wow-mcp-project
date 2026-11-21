@@ -73,7 +73,7 @@ func TestSearchToolErrors(t *testing.T) {
 func TestServerInstructionsSeparateForeverFromClassic(t *testing.T) {
 	cs := connect(t, New(Deps{}))
 	got := cs.InitializeResult().Instructions
-	for _, want := range []string{"WoW Forever", "Classic Era", "perplexity_search"} {
+	for _, want := range []string{"WoW Forever", "Classic Era", "perplexity_search", "kagi_search"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("instructions lack %q: %s", want, got)
 		}

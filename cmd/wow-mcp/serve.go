@@ -15,6 +15,7 @@ import (
 	"wowapp/internal/config"
 	"wowapp/internal/forevercompanion"
 	"wowapp/internal/foreverdb"
+	"wowapp/internal/kagi"
 	"wowapp/internal/keychain"
 	"wowapp/internal/perplexity"
 	"wowapp/internal/tools"
@@ -50,6 +51,14 @@ func newPerplexity(kc keychain.Keychain) *perplexity.Client {
 	return &perplexity.Client{
 		HTTP: &http.Client{Timeout: 45 * time.Second},
 		Key:  func(ctx context.Context) (string, error) { return kc.Get(ctx, keychain.Perplexity) },
+	}
+}
+
+// newKagi builds the Kagi search client; a missing key fails only kagi_search.
+func newKagi(kc keychain.Keychain) *kagi.Client {
+	return &kagi.Client{
+		HTTP: &http.Client{Timeout: 30 * time.Second},
+		Key:  func(ctx context.Context) (string, error) { return kc.Get(ctx, keychain.Kagi) },
 	}
 }
 
@@ -94,6 +103,7 @@ func cmdServe(e *env, args []string) error {
 		Chars:      chars,
 		Companion:  &forevercompanion.Client{HTTP: &http.Client{Timeout: 20 * time.Second}},
 		Search:     newPerplexity(secrets()),
+		Kagi:       newKagi(secrets()),
 		Characters: append([]config.Character{cfg.Main}, cfg.Others...),
 	}
 	return tools.New(deps).Run(ctx, transport)

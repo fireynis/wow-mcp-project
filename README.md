@@ -7,7 +7,7 @@ and your characters from Blizzard's API. It never writes to Blizzard, either dat
 ## Status
 
 The 16 ForeverDB tools, the 10 Forever Companion tools, the 7 character tools (Blizzard's WoW Forever profile API)
-and `perplexity_search` work.
+`perplexity_search` and `kagi_search` work.
 Character pages need only the Blizzard client; the Battle.net login (`wow-mcp login`, valid about a
 day) is needed just for `list_characters` to show every character on the account. See
 `docs/blizzard-forever-api.md` for what the profile API returns.
@@ -37,6 +37,12 @@ system prompt steers it to sources about WoW Forever and makes it say when a sou
 Classic Era or another version instead. The server's MCP instructions tell clients the same: use
 the Forever tools first and treat web sources that are not about Forever as another version.
 
+`kagi_search` is a second web search, through the [Kagi Search API](https://help.kagi.com/kagi/api/search.html)
+(about $0.012 a search, billed to your Kagi API account). It returns up to 10 result pages with
+titles, snippets and dates rather than a written answer, plus related searches, and marks each result
+`aboutForever` when its title or snippet mentions Forever. It needs your own Kagi API key from
+https://kagi.com/api/keys.
+
 ## Build
 
 ```sh
@@ -57,10 +63,11 @@ go build -o build/wow-mcp ./cmd/wow-mcp
    build/wow-mcp keys set blizzard-client-secret
    build/wow-mcp keys set foreverdb
    build/wow-mcp keys set perplexity   # optional: only perplexity_search needs it
+   build/wow-mcp keys set kagi         # optional: only kagi_search needs it
    build/wow-mcp keys list        # which are stored, never their values
    ```
 
-   The accounts are `blizzard-client-id`, `blizzard-client-secret`, `foreverdb`, `perplexity`,
+   The accounts are `blizzard-client-id`, `blizzard-client-secret`, `foreverdb`, `perplexity`, `kagi`,
    `blizzard-user-token` and `blizzard-user-token-expiry`. The last two are written by `login`;
    `blizzard-user-token-expiry` is stored as Unix seconds.
 4. **Write the config** (below).
@@ -117,7 +124,8 @@ Forever Companion tools (no key needed): `companion_list_dungeons`, `companion_g
 `companion_list_rares`, `companion_list_zones`, `companion_list_reputations`,
 `companion_class_quests`.
 
-Web search: `perplexity_search` (takes a `query`; returns a short answer and its source pages).
+Web search: `perplexity_search` (takes a `query`; returns a short answer and its source pages) and
+`kagi_search` (takes a `query`; returns up to 10 result pages and related searches).
 
 Character tools: `list_characters`, `get_character`, `get_equipment`, `get_talents`, `get_stats`,
 `get_reputations`, `get_professions`. Each takes an optional `character`: a configured name

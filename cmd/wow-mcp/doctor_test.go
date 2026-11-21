@@ -81,6 +81,7 @@ func useDoctor(t *testing.T, o doctorOpts) {
 		keychain.BlizzardClientSecret: "client-secret-CCC333",
 		keychain.ForeverDB:            "fdbkey12345",
 		keychain.Perplexity:           "pplx-key-DDD444",
+		keychain.Kagi:                 "kagi-key-EEE555",
 		keychain.BlizzardUserToken:    "user-token-BBB222",
 		keychain.BlizzardUserExpiry:   strconv.FormatInt(time.Now().Add(o.userExpires).Unix(), 10),
 	}
@@ -140,7 +141,7 @@ func TestDoctorAllGood(t *testing.T) {
 	if code != 0 || strings.Contains(out, "FAIL") || strings.Contains(out, "warn") {
 		t.Errorf("exit %d\n%s", code, out)
 	}
-	for _, secret := range []string{"fdbkey12345", "pplx-key-DDD444", "user-token-BBB222", "client-secret-CCC333", "app-token-AAA111"} {
+	for _, secret := range []string{"fdbkey12345", "pplx-key-DDD444", "kagi-key-EEE555", "user-token-BBB222", "client-secret-CCC333", "app-token-AAA111"} {
 		if strings.Contains(out, secret) {
 			t.Errorf("output leaks %q", secret)
 		}
